@@ -8,6 +8,42 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from nelson_siegel_svensson.calibrate import calibrate_ns_ols
 
+# General Yield Functions:{{{1
+def getyieldfromprice_aux(price, coupon, years, grossinterestrate):
+    """
+    The interestrate is such that this equation = 0
+    """
+    couponpayments = np.sum([0.5 * coupon / grossinterestrate ** (halfyeari / 2) for halfyeari in range(years * 2)])
+    price2 = couponpayments + 1 / grossinterestrate ** years
+    return(price - price2)
+
+    
+def getyieldfromprice(price, coupon, years):
+    """
+    Input the price for a bond with face value of $1 and a biannual coupon of coupon/2 with a maturity in years
+
+    Note: coupons are paid in the last period of the bond's life: https://corporatefinanceinstitute.com/resources/knowledge/trading-investing/coupon-bond/
+
+    stuff to check:
+    - coupon done contnuously? i.e. what if bond 3/4 of year long
+    """
+    f1 = functools.partial(getyieldfromprice_aux, price, coupon, years)
+    # returns the gross interest rate
+    interestrate = brentq(f1, 0.5, 1.5)
+
+    interestrate = (interestrate - 1)
+    interestrate = interestrate * 100
+    round(interestrate, 4)
+    return(interestrate)
+
+
+def getyieldfromprice_test():
+    rate = getyieldfromprice(1, 0, 10)
+    print(rate)
+    rate = getyieldfromprice(1, 0.1, 1)
+    print(rate)
+
+
 # OLS Yield Curve Functions:{{{1
 def getolsycparam(years, yields, dropabove = 10):
     """
