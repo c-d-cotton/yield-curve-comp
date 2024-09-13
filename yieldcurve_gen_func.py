@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime
+import functools
 import math
 import numpy as np
 from numpy import exp
