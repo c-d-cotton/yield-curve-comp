@@ -5,6 +5,7 @@ import math
 import numpy as np
 from numpy import exp
 import pandas as pd
+from scipy.optimize import brentq
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from nelson_siegel_svensson.calibrate import calibrate_ns_ols
