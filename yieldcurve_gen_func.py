@@ -4,8 +4,11 @@ import functools
 import math
 import numpy as np
 from numpy import exp
+from numpy import newaxis
 import pandas as pd
 from scipy.optimize import brentq
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from nelson_siegel_svensson.calibrate import calibrate_ns_ols
@@ -404,3 +407,207 @@ def yc_comparison():
     print('ridge took: ' + str(datetime.datetime.now() - start))
 
 # yc_comparison()
+# ACM:{{{1
+def getacmdecomp(dfyc, K = 5, n_maturities = 120, rx_maturities = (6, 18, 24, 36, 48, 60, 84, 120) ):
+    """
+    Data should be index column of daily dates in yyyymmdd + "d" format with 120 columns (by default) of NS(S) yields for 1-120 months
+    """
+
+    # Helper functions
+    def vec(x):
+        return np.reshape(x, (-1, 1))
+    def vec_quad_form(x):
+        return vec(np.outer(x, x))
+
+    # load data:{{{
+
+    # get monthly dataset
+    dfycm = copy.deepcopy(dfyc)
+    dfycm.index = [mytime[0: 6] + 'm' for mytime in dfyc.index]
+    dfycm.index.name = 'month'
+    dfycm = dfycm.groupby('month').last()
+
+    rawYields = dfycm.to_numpy()
+
+    # rawYields, plot_dates_m = load_gsw('data/gsw_ns_params.xlsx', n_maturities, domonthly = True)
+    t = rawYields.shape[0] - 1  # Number of observations
+
+    # Compute log excess returns from continuously compounded yields
+    ttm = np.arange(1.0, n_maturities + 1.0)[newaxis, :] / 12.0
+    logPrices = - rawYields * ttm
+    rf = -logPrices[:-1, [0]]
+    rx = logPrices[1:, :-1] - logPrices[:-1, 1:] - rf
+    # load data:}}}
+
+    # extract principal components:{{{
+    # Extract principal components
+    # scaledYields = StandardScaler(with_std=True).fit_transform(rawYields)[:, 0:120]
+    # scaledYieldCov = np.cov(scaledYields.T)
+    # [eigenvalues, eigenvectors] = np.linalg.eig(scaledYieldCov)
+    # yieldPCs = StandardScaler().fit_transform(scaledYields @ np.real(eigenvectors))
+    # X = yieldPCs[:, 0:K].T
+    # print(X)
+    # print(X.shape)
+
+    scaledYields = StandardScaler(with_std=True).fit_transform(rawYields)[:, 0:120]
+    pca = PCA(n_components = K)
+    # X = pca.fit(X = scaledYields).transform(X = scaledYields).T
+    X = pca.fit_transform(X = scaledYields).T
+
+    # extract principal components:}}}
+
+    # step 1:{{{
+    # Step (1) of the three-step procedure: estimate VAR(1) for the time series of pricing factors.
+
+    # # get end-of-month version of X
+    # plot_months = [plot_date.strftime('%Y%mm') for plot_date in plot_dates]
+    # # last index for each month
+    # plot_months_indexes = [i for i in range(1, len(plot_months)) if plot_months[i] != plot_months[i-1]]
+    # tm = len(plot_months_indexes) - 1
+    # rawYields_m = rawYields[plot_months_indexes, :]
+
+    # if False:
+    #     # get monthly X
+    #     X_m = X[:, plot_months_indexes]
+
+    # if False:
+    #     # Extract principal components
+    #     rawYields_m = rawYields[plot_months_indexes, :]
+    #     scaledYields_m = StandardScaler(with_std=True).fit_transform(rawYields_m)[:, 0:120]
+    #     scaledYieldCov_m = np.cov(scaledYields_m.T)
+    #     [eigenvalues_m, eigenvectors_m] = np.linalg.eig(scaledYieldCov_m)
+    #     yieldPCs_m = StandardScaler().fit_transform(scaledYields_m @ np.real(eigenvectors_m))
+    #     X_m = yieldPCs_m[:, 0:K].T
+
+    # rawYields_m = rawYields[plot_months_indexes, :]
+    # scaledYields_m = StandardScaler(with_std=False).fit_transform(rawYields_m)[:, 0:120]
+    # scaledYieldCov = np.cov(scaledYields.T)
+    # [eigenvalues, eigenvectors] = np.linalg.eig(scaledYieldCov)
+    # yieldPCs = StandardScaler().fit_transform(scaledYields @ np.real(eigenvectors))
+    # X = yieldPCs[:, 0:K].T
+
+    # pca = PCA(n_components=2)
+
+    # scaledYields_m = StandardScaler(with_std=True).fit_transform(rawYields_m)[:, 0:120]
+    # # scaledYields = StandardScaler(with_std=True).fit_transform(rawYields)[:, 0:120]
+    # pca = PCA(n_components = K)
+    # X = pca.fit_transform(X = scaledYields_m).T
+
+
+    # print(scaledYields_m.shape)
+    # X = pca.fit(X = scaledYields_m).transform(X = scaledYields_m).T
+    # X_d = pca.fit(X = scaledYields_m).transform(X = scaledYields).T
+    # print(X)
+    # print(X.shape)
+    # print(scaledYields_m)
+    # print(scaledYields_m.shape)
+    # print(scaledYields)
+    # print(scaledYields.shape)
+
+    # pca = PCA(n_components = K)
+    # X = pca.fit_transform(X = scaledYields).T
+    # # print(X.shape)
+    # print(X)
+    # print(X.shape)
+
+    # loadings = pd.DataFrame(pca.components_.T)
+    # print(loadings)
+
+
+
+    # # X_lhs_m = X_m[:, 1:]  #X_t+1. Left hand side of VAR.
+    # # X_rhs_m = np.vstack((np.ones((1, tm)), X_m[:, 0:-1])) #X_t and a constant.
+    # # var_coeffs = (X_lhs_m @ np.linalg.pinv(X_rhs_m))
+    # # v_m = X_lhs_m - var_coeffs @ X_rhs_m
+    # # Sigma = v_m @ v_m.T / t
+
+
+    X_lhs = X[:, 1:]  #X_t+1. Left hand side of VAR.
+    X_rhs = np.vstack((np.ones((1, t)), X[:, 0:-1])) #X_t and a constant.
+    var_coeffs = (X_lhs @ np.linalg.pinv(X_rhs))
+    mu = var_coeffs[:, [0]]
+    phi = var_coeffs[:, 1:]
+
+    v = X_lhs - var_coeffs @ X_rhs
+    Sigma = v @ v.T / t
+    # step 1:}}}
+
+    # step 2:{{{
+    # Step (2) of the three-step procedure: regress log excess returns on the factors.
+    selected_rx = rx[:, [x - 2 for x in rx_maturities]].T  # Offset by 2 since index 0 is excess return on a 2m bond
+    N = selected_rx.shape[0]
+    Z = np.vstack((np.ones((1, t)), v, X[:, 0:-1]))  #Innovations and lagged X
+    abc = selected_rx @ np.linalg.pinv(Z)
+    E = selected_rx - abc @ Z
+    sigmasq_ret = np.sum(E * E) / E.size
+
+    a = abc[:, [0]]
+    beta = abc[:, 1:K+1].T
+    c = abc[:, K+1:]
+    # step 2:}}}
+
+    # step 3:{{{
+    # Step (3) of the three-step procedure: Run cross-sectional regressions
+    BStar = np.squeeze(np.apply_along_axis(vec_quad_form, 1, beta.T))
+    lambda1 = np.linalg.pinv(beta.T) @ c
+    lambda0 = np.linalg.pinv(beta.T) @ (a + 1/2 * (BStar @ vec(Sigma) + sigmasq_ret))
+    # step 3:}}}
+
+    # daily yields principal components:{{{
+    # get daily X as well
+    rawYields_d = dfyc.to_numpy()
+    scaledYields_d = StandardScaler(with_std=True).fit_transform(rawYields_d)[:, 0:120]
+    pca = PCA(n_components = K)
+    X_d = pca.fit(X = scaledYields).transform(X = scaledYields_d).T
+    # daily yields principal components:}}}
+
+    # fitted yields:{{{
+    # Run bond pricing recursions
+    A = np.zeros((1, n_maturities))
+    B = np.zeros((K, n_maturities))
+
+    delta = rf.T @ np.linalg.pinv(np.vstack((np.ones((1, t)), X[:, 0:-1])))
+    delta0 = delta[[0], [0]]
+    delta1 = delta[[0], 1:]
+
+    A[0, 0] = - delta0[0]
+    B[:, 0] = - delta1
+
+    for i in range(0, n_maturities - 1):
+        A[0, i+1] = A[0, i] + (B[:, i].T @ (mu - lambda0))[0] + 1/2 * (B[:, i].T @ Sigma @ B[:, i] + 0 * sigmasq_ret) - delta0[0]
+        B[:, i+1] = B[:, i] @ (phi - lambda1) - delta1
+
+    # Construct fitted yields
+    fittedLogPrices = (A.T + B.T @ X_d).T
+    fittedYields = - fittedLogPrices / ttm
+    # fitted yields:}}}
+
+    # risk free yields:{{{
+    # Risk free bond pricing recursions (Chris added)
+    A_rf = np.zeros((1, n_maturities))
+    B_rf = np.zeros((K, n_maturities))
+
+    A_rf[0, 0] = - delta0[0]
+    B_rf[:, 0] = - delta1
+
+    for i in range(0, n_maturities - 1):
+        A_rf[0, i+1] = A_rf[0, i] + (B_rf[:, i].T @ (mu))[0] + 1/2 * (B_rf[:, i].T @ Sigma @ B_rf[:, i] + 0 * sigmasq_ret) - delta0[0]
+        B_rf[:, i+1] = B_rf[:, i] @ (phi) - delta1
+
+    # Construct fitted yields
+    riskfreeLogPrices = (A_rf.T + B_rf.T @ X_d).T
+    riskfreeYields = - riskfreeLogPrices / ttm
+    termpremiumYields = fittedYields - riskfreeYields
+
+    # risk free yields:}}}
+
+    # output:{{{
+    dfyc.columns = ['ns_m' + str(i).zfill(3) for i in range(1, n_maturities + 1)]
+    dffitted = pd.DataFrame(fittedYields, index = dfyc.index, columns = ['fitted_m' + str(i).zfill(3) for i in range(1, n_maturities + 1)])
+    dfrf = pd.DataFrame(riskfreeYields, index = dfyc.index, columns = ['rf_m' + str(i).zfill(3) for i in range(1, n_maturities + 1)])
+    dftp = pd.DataFrame(termpremiumYields, index = dfyc.index, columns = ['tp_m' + str(i).zfill(3) for i in range(1, n_maturities + 1)])
+    df = pd.concat([dfyc, dffitted, dfrf, dftp], axis = 1)
+    print(df)
+    # output:}}}
+
+    return(df)
