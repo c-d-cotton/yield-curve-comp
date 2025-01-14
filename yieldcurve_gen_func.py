@@ -409,10 +409,18 @@ def yc_comparison():
 
 # yc_comparison()
 # ACM:{{{1
-def getacmdecomp(dfyc, K = 5, n_maturities = 120, rx_maturities = (6, 18, 24, 36, 48, 60, 84, 120) ):
+def getacmdecomp(dfyc, K = 5, n_maturities = 120, rx_maturities = None, dfycm = None):
     """
     Data should be index column of daily dates in yyyymmdd + "d" format with 120 columns (by default) of NS(S) yields for 1-120 months
+
+    Allow possibility to use differently monthly data
+    For example, I might estimate daily term premium in Canada using US monthly data
     """
+    # make copy of dfyc so don't affect original dataset
+    dfyc = copy.deepcopy(dfyc)
+
+    if rx_maturities is None:
+        rx_maturities = (6, 18, 24, 36, 48, 60, 84, 120)
 
     # Helper functions
     def vec(x):
@@ -422,11 +430,12 @@ def getacmdecomp(dfyc, K = 5, n_maturities = 120, rx_maturities = (6, 18, 24, 36
 
     # load data:{{{
 
-    # get monthly dataset
-    dfycm = copy.deepcopy(dfyc)
-    dfycm.index = [mytime[0: 6] + 'm' for mytime in dfyc.index]
-    dfycm.index.name = 'month'
-    dfycm = dfycm.groupby('month').last()
+    if dfycm is None:
+        # get monthly dataset
+        dfycm = copy.deepcopy(dfyc)
+        dfycm.index = [mytime[0: 6] + 'm' for mytime in dfyc.index]
+        dfycm.index.name = 'month'
+        dfycm = dfycm.groupby('month').last()
 
     rawYields = dfycm.to_numpy()
 
