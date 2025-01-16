@@ -437,6 +437,17 @@ def getacmdecomp(dfyc, K = 5, n_maturities = 120, rx_maturities = None, dfycm = 
         dfycm.index.name = 'month'
         dfycm = dfycm.groupby('month').last()
 
+    # verify months are consecutive
+    dfycm['num'] = dfycm.index.str.slice(0, 4).astype(int) * 12 + dfycm.index.str.slice(4, 6).astype(int) - 1
+    dfycm['numdiff'] = dfycm['num'].diff()
+    dfycm.loc[dfycm.index[0], 'numdiff'] = 1
+    dfycm2 = dfycm[dfycm['numdiff'] != 1]
+    if len(dfycm2) > 0:
+        print(dfycm2['numdiff'])
+        # raise ValueError('Non-consecutive months')
+        print('Warning: There are non-consecutive months which may affect the ACM fit.')
+    dfycm = dfycm.drop(['num', 'numdiff'], axis = 1)
+
     rawYields = dfycm.to_numpy()
 
     # rawYields, plot_dates_m = load_gsw('data/gsw_ns_params.xlsx', n_maturities, domonthly = True)
@@ -617,7 +628,6 @@ def getacmdecomp(dfyc, K = 5, n_maturities = 120, rx_maturities = None, dfycm = 
     dfrf = pd.DataFrame(riskfreeYields, index = dfyc.index, columns = ['rf_m' + str(i).zfill(3) for i in range(1, n_maturities + 1)])
     dftp = pd.DataFrame(termpremiumYields, index = dfyc.index, columns = ['tp_m' + str(i).zfill(3) for i in range(1, n_maturities + 1)])
     df = pd.concat([dfyc, dffitted, dfrf, dftp], axis = 1)
-    print(df)
     # output:}}}
 
     return(df)
