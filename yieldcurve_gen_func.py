@@ -595,7 +595,7 @@ def getacmdecomp(dfyc, K = 5, n_maturities = 120, rx_maturities = None, dfycm = 
     B[:, 0] = - delta1
 
     for i in range(0, n_maturities - 1):
-        A[0, i+1] = A[0, i] + (B[:, i].T @ (mu - lambda0))[0] + 1/2 * (B[:, i].T @ Sigma @ B[:, i] + 0 * sigmasq_ret) - delta0[0]
+        A[0, i+1] = A[0, i] + (B[:, i].T @ (mu - lambda0))[0] + 1/2 * (B[:, i].T @ Sigma @ B[:, i] + sigmasq_ret) - delta0[0]
         B[:, i+1] = B[:, i] @ (phi - lambda1) - delta1
 
     # Construct fitted yields
@@ -612,7 +612,7 @@ def getacmdecomp(dfyc, K = 5, n_maturities = 120, rx_maturities = None, dfycm = 
     B_rf[:, 0] = - delta1
 
     for i in range(0, n_maturities - 1):
-        A_rf[0, i+1] = A_rf[0, i] + (B_rf[:, i].T @ (mu))[0] + 1/2 * (B_rf[:, i].T @ Sigma @ B_rf[:, i] + 0 * sigmasq_ret) - delta0[0]
+        A_rf[0, i+1] = A_rf[0, i] + (B_rf[:, i].T @ (mu))[0] + 1/2 * (B_rf[:, i].T @ Sigma @ B_rf[:, i] + sigmasq_ret) - delta0[0]
         B_rf[:, i+1] = B_rf[:, i] @ (phi) - delta1
 
     # Construct fitted yields
